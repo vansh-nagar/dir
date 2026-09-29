@@ -28,6 +28,9 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.True(t, cfg.Regsync.Enabled)
 	assert.True(t, cfg.Indexer.Enabled)
 	assert.False(t, cfg.Name.Enabled)
+	assert.False(t, cfg.PruneUntrusted.Enabled)
+	assert.Equal(t, 30*time.Minute, cfg.PruneUntrusted.Interval)
+	assert.Equal(t, "MEDIUM", cfg.PruneUntrusted.ScanSeverity)
 }
 
 func TestLoadConfig_EnvOverrides(t *testing.T) {
@@ -36,6 +39,9 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	t.Setenv("RECONCILER_NAME_ENABLED", "true")
 	t.Setenv("RECONCILER_INDEXER_INTERVAL", "2h")
 	t.Setenv("RECONCILER_NAME_INTERVAL", "30m")
+	t.Setenv("RECONCILER_PRUNE_UNTRUSTED_ENABLED", "true")
+	t.Setenv("RECONCILER_PRUNE_UNTRUSTED_INTERVAL", "15m")
+	t.Setenv("RECONCILER_PRUNE_UNTRUSTED_SCAN_SEVERITY", "HIGH")
 
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
@@ -46,4 +52,7 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	assert.True(t, cfg.Name.Enabled)
 	assert.Equal(t, 2*time.Hour, cfg.Indexer.Interval)
 	assert.Equal(t, 30*time.Minute, cfg.Name.Interval)
+	assert.True(t, cfg.PruneUntrusted.Enabled)
+	assert.Equal(t, 15*time.Minute, cfg.PruneUntrusted.Interval)
+	assert.Equal(t, "HIGH", cfg.PruneUntrusted.ScanSeverity)
 }
