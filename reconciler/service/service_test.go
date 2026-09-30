@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/reconciler/tasks"
+	"github.com/agntcy/dir/reconciler/tasks/policy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,6 +71,24 @@ func TestAddTask_Multiple(t *testing.T) {
 	require.Len(t, s.tasks, 2)
 	assert.Same(t, t1, s.tasks[0])
 	assert.Same(t, t2, s.tasks[1])
+}
+
+func TestRegisterPolicyTask_Disabled(t *testing.T) {
+	s := newTestService()
+
+	require.NoError(t, s.registerPolicyTask(policy.Config{}, nil))
+	assert.Empty(t, s.tasks)
+}
+
+// No policy evaluator is implemented yet: enabling the task registers it
+// disabled, so policy.enabled has a visible effect instead of none.
+func TestRegisterPolicyTask_EnabledWithoutEvaluators(t *testing.T) {
+	s := newTestService()
+
+	require.NoError(t, s.registerPolicyTask(policy.Config{Enabled: true}, nil))
+	require.Len(t, s.tasks, 1)
+	assert.Equal(t, "policy", s.tasks[0].Name())
+	assert.False(t, s.tasks[0].IsEnabled())
 }
 
 func TestIsReady(t *testing.T) {

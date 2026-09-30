@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/reconciler/tasks/policy"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,6 +29,11 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.True(t, cfg.Regsync.Enabled)
 	assert.True(t, cfg.Indexer.Enabled)
 	assert.False(t, cfg.Name.Enabled)
+
+	// Policy parameters come from the task's own defaults, not a second copy.
+	assert.False(t, cfg.Policy.Enabled)
+	assert.Equal(t, policy.DefaultInterval, cfg.Policy.Interval)
+	assert.Equal(t, policy.DefaultRecordTimeout, cfg.Policy.RecordTimeout)
 }
 
 func TestLoadConfig_EnvOverrides(t *testing.T) {
@@ -36,6 +42,9 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	t.Setenv("RECONCILER_NAME_ENABLED", "true")
 	t.Setenv("RECONCILER_INDEXER_INTERVAL", "2h")
 	t.Setenv("RECONCILER_NAME_INTERVAL", "30m")
+	t.Setenv("RECONCILER_POLICY_ENABLED", "true")
+	t.Setenv("RECONCILER_POLICY_INTERVAL", "5m")
+	t.Setenv("RECONCILER_POLICY_RECORD_TIMEOUT", "45s")
 
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
@@ -46,4 +55,7 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	assert.True(t, cfg.Name.Enabled)
 	assert.Equal(t, 2*time.Hour, cfg.Indexer.Interval)
 	assert.Equal(t, 30*time.Minute, cfg.Name.Interval)
+	assert.True(t, cfg.Policy.Enabled)
+	assert.Equal(t, 5*time.Minute, cfg.Policy.Interval)
+	assert.Equal(t, 45*time.Second, cfg.Policy.RecordTimeout)
 }
