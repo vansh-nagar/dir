@@ -26,7 +26,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 )
 
 // gatedCID is a valid CID: PullReferrer validates it.
@@ -330,7 +329,7 @@ func verificationInfo(t *testing.T, db *namingGateDB) (*namingv1.GetVerification
 
 	ctrl := NewNamingController(&gatedStore{present: true}, db, nil)
 
-	return ctrl.GetVerificationInfo(t.Context(), &namingv1.GetVerificationInfoRequest{Cid: proto.String(gatedCID)})
+	return ctrl.GetVerificationInfo(t.Context(), &namingv1.GetVerificationInfoRequest{Cid: new(gatedCID)})
 }
 
 // An excluded record's verification is not disclosed: the caller is told the
