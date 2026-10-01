@@ -89,6 +89,11 @@ func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetV
 		cid = resolveResp.GetRecords()[0].GetCid()
 	}
 
+	// A record the policy gate excludes is refused as on every other read by CID.
+	if err := checkRecordServable(n.db, cid); err != nil {
+		return nil, err
+	}
+
 	// Query database for the latest verification attempt
 	latest, err := n.db.GetVerificationByCID(cid)
 	if err != nil {

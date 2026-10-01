@@ -12,17 +12,21 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	catalogv1 "github.com/agntcy/dir/api/catalog/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/config"
+	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 // gatedCID is a valid CID: PullReferrer validates it.
@@ -293,4 +297,71 @@ func TestExportAgent_ExcludedRecordIsReportedAsExcluded(t *testing.T) {
 	assert.Equal(t, excludedMessage(""), status.Convert(exErr).Message(), "no policy or reason in it")
 	assert.Equal(t, codes.NotFound, status.Code(missErr))
 	assert.Zero(t, exStore.reads, "the store must not be read for an excluded record")
+}
+
+// --- GetVerificationInfo ---
+
+// namingGateDB answers the policy gate, and holds a valid verification for
+// every CID when verified is set.
+type namingGateDB struct {
+	types.DatabaseAPI
+
+	servable bool
+	verified bool
+}
+
+func (d *namingGateDB) IsRecordServable(string) (bool, error) { return d.servable, nil }
+
+func (d *namingGateDB) GetVerificationByCID(cid string) (types.NameVerificationObject, error) {
+	if !d.verified {
+		return nil, gormdb.ErrVerificationNotFound
+	}
+
+	return &gormdb.NameVerification{
+		RecordCID: cid,
+		Method:    "wellknown",
+		Status:    gormdb.VerificationStatusVerified,
+		UpdatedAt: time.Now(),
+	}, nil
+}
+
+func verificationInfo(t *testing.T, db *namingGateDB) (*namingv1.GetVerificationInfoResponse, error) {
+	t.Helper()
+
+	ctrl := NewNamingController(&gatedStore{present: true}, db, nil)
+
+	return ctrl.GetVerificationInfo(t.Context(), &namingv1.GetVerificationInfoRequest{Cid: proto.String(gatedCID)})
+}
+
+// An excluded record's verification is not disclosed: the caller is told the
+// record is not available under the node's content policy.
+func TestGetVerificationInfo_ExcludedRecordIsReportedAsExcluded(t *testing.T) {
+	t.Parallel()
+
+	resp, err := verificationInfo(t, &namingGateDB{servable: false, verified: true})
+
+	require.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Equal(t, codes.PermissionDenied, status.Code(err))
+	assert.Equal(t, excludedMessage(""), status.Convert(err).Message(), "no policy or reason in it")
+}
+
+func TestGetVerificationInfo_ServableRecordIsDisclosed(t *testing.T) {
+	t.Parallel()
+
+	resp, err := verificationInfo(t, &namingGateDB{servable: true, verified: true})
+
+	require.NoError(t, err)
+	assert.True(t, resp.GetVerified())
+}
+
+// A CID with no verification on record still gets the plain answer.
+func TestGetVerificationInfo_ServableRecordWithoutVerification(t *testing.T) {
+	t.Parallel()
+
+	resp, err := verificationInfo(t, &namingGateDB{servable: true, verified: false})
+
+	require.NoError(t, err)
+	assert.False(t, resp.GetVerified())
+	assert.Equal(t, "no verification found", resp.GetErrorMessage())
 }
