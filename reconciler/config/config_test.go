@@ -34,6 +34,7 @@ func TestLoadConfig_NoFile_ReturnsDefaults(t *testing.T) {
 	assert.False(t, cfg.PolicyEvaluation.Enabled)
 	assert.Equal(t, policytask.DefaultInterval, cfg.PolicyEvaluation.Interval)
 	assert.Equal(t, policytask.DefaultRecordTimeout, cfg.PolicyEvaluation.RecordTimeout)
+	assert.Equal(t, policytask.DefaultBatchSize, cfg.PolicyEvaluation.BatchSize)
 }
 
 func TestLoadConfig_EnvOverrides(t *testing.T) {
@@ -45,6 +46,7 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	t.Setenv("RECONCILER_POLICY_EVALUATION_ENABLED", "true")
 	t.Setenv("RECONCILER_POLICY_EVALUATION_INTERVAL", "5m")
 	t.Setenv("RECONCILER_POLICY_EVALUATION_RECORD_TIMEOUT", "45s")
+	t.Setenv("RECONCILER_POLICY_EVALUATION_BATCH_SIZE", "250")
 
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
@@ -58,4 +60,5 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	assert.True(t, cfg.PolicyEvaluation.Enabled)
 	assert.Equal(t, 5*time.Minute, cfg.PolicyEvaluation.Interval)
 	assert.Equal(t, 45*time.Second, cfg.PolicyEvaluation.RecordTimeout)
+	assert.Equal(t, 250, cfg.PolicyEvaluation.BatchSize)
 }
