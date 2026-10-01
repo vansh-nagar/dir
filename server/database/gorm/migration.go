@@ -93,6 +93,7 @@ func (db *DB) migrate() error {
 		ScanReport{},
 		PolicyEvaluation{},
 		PolicyVersion{},
+		PolicyBackfill{},
 		RecordUsageMetrics{},
 	); err != nil {
 		return fmt.Errorf("failed to migrate object schema: %w", err)
